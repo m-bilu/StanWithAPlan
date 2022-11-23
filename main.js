@@ -6,6 +6,7 @@
 // Importing necessary discord.js classes
 const { Client, Events, GatewayIntentBits, Collection } = require('discord.js'); // requiring discord.js library
 const { token } = require('./config.json');
+const { SlotData } = require('./shared.js');
 
 // fs is Node's native file system module. Can read commands directory and identify actual files for each command
 // npath is node's native path system module. Can construct file paths for file access (auto detects OS, etc)
@@ -20,9 +21,18 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 // When the client is ready, run this code (only once)
 // We use 'c' for the event parameter to keep it seperate from the already defined 'client'
+function log(msg) 
+{
+    console.log(msg);
+    const channel = client.channels.cache.find(ch => ch.name === 'log');
+    if (!channel) return;
+    channel.send(msg);
+}
+
 client.once(Events.ClientReady, c=>{  
-    console.log(`Ready! Logged in as ${c.user.tag}`);
+    log(`Ready! Logged in as ${c.user.tag}`);
 });
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////// STEP 2:
@@ -32,11 +42,6 @@ client.once(Events.ClientReady, c=>{
 
 // Attaching .commands property to client instance to access commands in other files
 client.commands = new Collection(); // Collections extends native JS Map class (stores, retrieves commands for use)
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////// STEP 3:
-// Load all command files into commands directory (WHY? WHY CANT I JUST IMPORT FOLDER?)
 
 // __dirname is env variable storing absolute path to current file
 // commandPath holds path to commands folder
@@ -53,9 +58,9 @@ for (const file of commandFiles) {
     if ('data' in command && 'execute' in command) {
 		client.commands.set(command.data.name, command);
 	} else if (!'data' in command) {
-		console.log(`[WARNING] The command at ${filePath} is missing a required "data" field.`);
+		log(`[WARNING] The command at ${filePath} is missing a required "data" field.`);
 	} else {
-		console.log(`[WARNING] The command at ${filePath} is missing a required "execute" field.`);
+		log(`[WARNING] The command at ${filePath} is missing a required "execute" field.`);
     }
 
 }
@@ -63,7 +68,7 @@ for (const file of commandFiles) {
 // Now, client.commands is a collection holding all commands offered by bot
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////// STEP 4:
+////////////////////////////////////// STEP 3:
 // Event Listener/Command Handler, recieving command interactions (every slash command is an interaction object)
 
 // .on() and .off() methods add/remove events
@@ -82,6 +87,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     if (!command) {
         console.error(`No command matching ${interaction.commandName} was found.`);
+        log(`No command matching ${interaction.commandName} was found.`);
         return;
     }
 
@@ -89,6 +95,7 @@ client.on(Events.InteractionCreate, async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
+        log(toString(error));
         // interaction.reply is one common way to tell Discord there is error and command was NOT executed
         // ELSE NOTHING WILL WORK, U MUST COMMUNICATE !!
         await interaction.reply({content: "There was an error while executing this command!", ephemeral: true});
@@ -109,3 +116,14 @@ client.on(Events.InteractionCreate, async interaction => {
 
 // Client login onto server, bot will come online, last line in code please
 client.login(token) // token stored in config file
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////// STEP 6:
+// DONE FOR NOW
+// More possible topics to learn:
+// Event Handlers
+// Special Response Methods, more than interaction.reply (WHICH ALWAYS NEEDS TO BE USED)
+// Additional validated option types, Advanced command creation
+// Formatted embeds to response
+// Buttons, Menus, Forms(Modals)
