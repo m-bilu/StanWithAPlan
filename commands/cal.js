@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, Collection } = require("discord.js");
+const { SlashCommandBuilder, Collection, EmbedBuilder } = require("discord.js");
 const { SlotData } = require('../shared.js');
 let { week } = require('../shared.js')
 
@@ -23,21 +23,36 @@ function genCommand(interaction) {
         newday = new Array(24);
         week.set(day, newday);
         
-        for (hour in newday) {
-            week.get(day).get(hour).push(new SlotData('Empty', ''));
+        for (hour = 0; hour <= 23; ++hour) {
+            week.get(day)[hour] = { name: 'Empty', description: 'None', time : `${day}, time is ${hour}.` };
         }
     }
 
-    log('Full Calendar is made!', interaction.client);
 }
 
 function printCommand(interaction) {
-    log('Printing...', interaction.client);
-    log(week.get('Monday').length.toString(), interaction.client);
-    log('Successfully printed!', interaction.client);
+    ///////////////////////////
+    ///////////////////////////
+    // EMBED FOR CALENDAR
+    items = week.get('Monday'); // Make sure week is initialized;
+
+    const embed = new EmbedBuilder()
+    .setColor(0x0099FF)
+    .setTitle("Stan's Plan")
+    .setAuthor({ name: 'Stan'})
+    .setDescription(`This week on ${interaction.guild.name}`)
+    .setTimestamp()
+
+    // Adding all timeslots onto embed
+    for (var xc = 0; xc < (items.length-1); xc++) {
+        console.log(items);
+        const item = items[xc];
+        console.log(item);
+        embed.addFields({ name: 'Time Slot Entry', value: item});
+    }
+
+    interaction.channel.send({ embeds : [embed] });
 }
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////// STEP 1.5:
@@ -59,13 +74,12 @@ module.exports = {
         ),
 
 
-
     
         async execute(interaction) {
 
             eval(interaction.options.getSubcommand().concat('Command(interaction)'));
             // NEVER FORGET RESPONSE
-            await interaction.reply('Command Done!');
+            await interaction.reply('Command Complete');
         },
 };
 
