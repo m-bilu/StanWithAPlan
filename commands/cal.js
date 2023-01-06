@@ -1,57 +1,94 @@
-const { SlashCommandBuilder, Collection, EmbedBuilder } = require("discord.js");
-const { SlotData } = require('../shared.js');
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 let { week } = require('../shared.js')
 
 
 // HELPER FUNCTION, Logs to log channel on test server
 function log(msg, client) 
 {
-    console.log(msg);
+    //console.log(msg);
     const channel = client.channels.cache.find(ch => ch.name === 'log');
     if (!channel) return;
     channel.send(msg);
 }
 
-function genCommand(interaction) {
-    //log('Starting gen...', interaction.client);
-    //log(`week is ${week}`, interaction.client);
-    week = new Collection();
-    //log('Week is made!', interaction.client);
-    daysInWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+// Adds event to calendar
+function addCommand(interaction) {
 
-    for (day of daysInWeek) {
-        newday = new Array(24);
-        week.set(day, newday);
-        
-        for (hour = 0; hour <= 23; ++hour) {
-            week.get(day)[hour] = { name: 'Empty', description: 'None', time : `${day}, time is ${hour}.` };
+    let days = { 'Monday' : 0,
+        'Tuesday' : 1,
+        'Wednesday' : 2,
+        'Thursday' : 3,
+        'Friday' : 4,
+        'Saturday' : 5,
+        'Sunday' : 6
+    }
+    
+
+    // day, start, end, desc
+    let newEntry = {user: interaction.user, startHour : interaction.options.getInteger('starthour'), 
+    startMinute : interaction.options.getInteger('startminute'), endHour : interaction.options.getInteger('endhour'),
+    endMinute : interaction.options.getInteger('endminute'), desc : interaction.options.getString('desc')};
+
+    // Insert in appropriate spot and order, O(n)
+    let thisday = week.week[days[interaction.options.getString('day')]];
+
+    console.log(thisday.length);
+
+    for (eventInd = 0; eventInd < thisday.length; ++eventInd) {
+        let curTime = thisday[eventInd].startHour*100 + thisday[eventInd].startMinute;
+        let targetTime = interaction.options.getInteger('starthour')*100 + interaction.options.getInteger('startminute');
+        let nextTime = -1;
+        if (eventInd + 1 < day.length) {
+            nextTime = thisday[eventInd+1].startHour*100 + thisday[eventInd+1].startMinute;
+        }
+
+        // #---
+
+        console.log(`curTime: ${curTime}, targetTime: ${targetTime}, nextTime: ${nextTime}`);
+
+        if (curTime <= targetTime && targetTime != -1 && targetTime < nextTime) {
+            thisday.insert(eventInd+1, newEntry);
+            console.log(thisday);
+        } else if (eventInd + 1 == day.length) {
+            thisday.insert(eventInd, newEntry);
+            console.log(thisday);
         }
     }
 
+    if (thisday.length == 0) {thisday.push(newEntry);}
+
+
+
+
+    return 'Command Complete';
+
 }
 
+// Purpose: Prints out embed representing calendar, does not use interaction parameter
 function printCommand(interaction) {
-    ///////////////////////////
-    ///////////////////////////
-    // EMBED FOR CALENDAR
-    items = week.get('Monday'); // Make sure week is initialized;
 
-    const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
-    .setTitle("Stan's Plan")
-    .setAuthor({ name: 'Stan'})
-    .setDescription(`This week on ${interaction.guild.name}`)
-    .setTimestamp()
-
-    // Adding all timeslots onto embed
-    for (var xc = 0; xc < (items.length-1); xc++) {
-        console.log(items);
-        const item = items[xc];
-        console.log(item);
-        embed.addFields({ name: 'Time Slot Entry', value: item});
+    scheds = Array(7)
+    for (i = 0; i < 7; ++i) {
+        scheds[i] = week.sched(i)
     }
 
+    const embed = new EmbedBuilder()
+    .setColor('#f5426f')
+    .setTitle('Calendar')
+    .addFields(
+        { name : 'Monday', value : scheds[0] },
+        { name : 'Tuesday', value : scheds[1] },
+        { name : 'Wednesday', value : scheds[2] },
+        { name : 'Thursday', value : scheds[3] },
+        { name : 'Friday', value : scheds[4] },
+        { name : 'Saturday', value : scheds[5] },
+        { name : 'Sunday', value : scheds[6] }
+    )
+    .setTimestamp();
+
     interaction.channel.send({ embeds : [embed] });
+
+    return 'Command Complete';
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,11 +98,18 @@ function printCommand(interaction) {
 module.exports = {
     data : new SlashCommandBuilder()
         .setName("calendar")
-        .setDescription('Resets to new instance of empty calendar.')
+        .setDescription('Holds multiple subcommands to manipulate our calendar.')
         .addSubcommand(subcommand => 
             subcommand
-                .setName('gen')
-                .setDescription('Generates new instance of week, all slots empty.')
+                .setName('add')
+                .setDescription('Adds an event on -day-, starting at -start- and ending at -start + duration-.')
+                .addStringOption(option => option.setName('day').setDescription('Day of the Week.').setRequired(true))
+                .addIntegerOption(option => option.setName('starthour').setDescription('Start hour of block.').setRequired(true))
+                .addIntegerOption(option => option.setName('endhour').setDescription('End of block.').setRequired(true))
+                .addStringOption(option => option.setName('desc').setDescription('Goal of block.').setRequired(true))
+                .addIntegerOption(option => option.setName('startminute').setDescription('End hour of block.').setRequired(false))
+                .addIntegerOption(option => option.setName('endminute').setDescription('End of block.').setRequired(false))
+
         )
         .addSubcommand(subcommand => 
             subcommand
